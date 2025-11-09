@@ -56,6 +56,7 @@ Then add `build-apple/whisper.xcframework` to the Xcode project's "Frameworks, L
 - LaunchAtLogin
 - MediaRemoteAdapter
 - Zip
+- swift-atomics (required for thread-safe operations in WhisperState+LocalModelManager.swift)
 
 ## Architecture
 
@@ -205,6 +206,7 @@ xcodebuild -project VoiceInk.xcodeproj \
     -derivedDataPath ./build \
     -skipPackagePluginValidation \
     -skipMacroValidation \
+    -allowProvisioningUpdates \
     clean build
 
 # Sign frameworks and app
@@ -248,3 +250,43 @@ xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -resolvePackageDependenc
 4. **Tests fail with unsafe flags error:** Use `-derivedDataPath ./build` to use custom build directory
 5. **Package.resolved not updating:** Clear SPM caches or use Xcode GUI to update packages
 6. **Power Mode not working:** Requires Accessibility permissions granted in System Settings
+7. **Missing swift-atomics dependency:** If build fails with "Unable to find module dependency: 'Atomics'", update Swift packages via Xcode GUI (File > Packages > Update to Latest Package Versions). Command-line package resolution may not fetch transitive dependencies correctly.
+8. **Build script needs -allowProvisioningUpdates:** Add this flag to xcodebuild for automatic code signing with personal Apple ID
+
+## Syncing Fork with Upstream
+
+When syncing a fork of VoiceInk with upstream:
+
+**Remote configuration:**
+```bash
+git remote add upstream https://github.com/Beingpax/VoiceInk.git
+```
+
+**Proper sync workflow:**
+```bash
+# 1. Update fork's main branch from upstream
+git checkout main
+git fetch upstream
+git merge upstream/main
+git push origin main
+
+# 2. Merge fork's main into personal dev branch
+git checkout personal/dev
+git merge main
+git push origin personal/dev
+```
+
+**Resolve bundle ID conflicts manually:** When merging, project.pbxproj will conflict. **DO NOT use `git checkout --ours`** - it discards ALL upstream changes. Instead:
+1. Let the conflict occur naturally
+2. Manually edit conflicted sections to:
+   - Keep: `PRODUCT_BUNDLE_IDENTIFIER = com.antonlvovych.VoiceInk`
+   - Take: `MARKETING_VERSION = 1.61` (or latest)
+   - Take: `CURRENT_PROJECT_VERSION = 161` (or latest)
+   - Take: All other upstream changes
+3. Stage resolved file and commit
+
+**Why `git checkout --ours` fails:** Takes entire file from your branch, losing upstream changes like CURRENT_PROJECT_VERSION updates that don't conflict with bundle ID.
+
+**Why this workflow:** Keeps fork's main branch in sync with upstream main, making it easier to create PRs back to upstream and maintain a clean fork history.
+
+**Version tag gotcha:** Git tags may point to commits BEFORE the actual version bump. For v1.61, the tag points to a commit with version 1.60 in project.pbxproj. The version update happened in a later commit (e5e194d). Merge upstream/main instead of tags to get correct version.
