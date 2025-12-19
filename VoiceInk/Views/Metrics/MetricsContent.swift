@@ -3,7 +3,8 @@ import SwiftUI
 struct MetricsContent: View {
     let transcriptions: [Transcription]
     let licenseState: LicenseViewModel.LicenseState
-    
+    @State private var showKeyboardShortcuts = false
+
     var body: some View {
         Group {
             if transcriptions.isEmpty {
@@ -138,8 +139,8 @@ struct MetricsContent: View {
     
     private var footerActionsView: some View {
         HStack(spacing: 12) {
+            KeyboardShortcutsButton(showKeyboardShortcuts: $showKeyboardShortcuts)
             CopySystemInfoButton()
-            FeedbackButton()
         }
     }
     
@@ -240,20 +241,18 @@ private enum Formatters {
     }
 }
 
-private struct FeedbackButton: View {
-    @State private var isClicked: Bool = false
+private struct KeyboardShortcutsButton: View {
+    @Binding var showKeyboardShortcuts: Bool
 
     var body: some View {
         Button(action: {
-            openFeedback()
+            showKeyboardShortcuts = true
         }) {
             HStack(spacing: 8) {
-                Image(systemName: isClicked ? "checkmark.circle.fill" : "exclamationmark.bubble.fill")
-                    .rotationEffect(.degrees(isClicked ? 360 : 0))
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isClicked)
+                Image(systemName: "command")
+                    .font(.system(size: 13, weight: .medium))
 
-                Text(isClicked ? "Sending" : "Feedback or Issues?")
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isClicked)
+                Text("Keyboard Shortcuts")
             }
             .font(.system(size: 13, weight: .medium))
             .padding(.horizontal, 12)
@@ -261,21 +260,8 @@ private struct FeedbackButton: View {
             .background(Capsule().fill(.thinMaterial))
         }
         .buttonStyle(.plain)
-        .scaleEffect(isClicked ? 1.1 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isClicked)
-    }
-
-    private func openFeedback() {
-        EmailSupport.openSupportEmail()
-
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            isClicked = true
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                isClicked = false
-            }
+        .popover(isPresented: $showKeyboardShortcuts, arrowEdge: .bottom) {
+            KeyboardShortcutsListView()
         }
     }
 }

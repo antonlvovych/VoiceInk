@@ -65,7 +65,7 @@ class AIEnhancementService: ObservableObject {
 
     private let aiService: AIService
     private let screenCaptureService: ScreenCaptureService
-    private let dictionaryContextService: DictionaryContextService
+    private let customVocabularyService: CustomVocabularyService
     private let baseTimeout: TimeInterval = 30
     private let rateLimitInterval: TimeInterval = 1.0
     private var lastRequestTime: Date?
@@ -77,7 +77,7 @@ class AIEnhancementService: ObservableObject {
         self.aiService = aiService
         self.modelContext = modelContext
         self.screenCaptureService = ScreenCaptureService()
-        self.dictionaryContextService = DictionaryContextService.shared
+        self.customVocabularyService = CustomVocabularyService.shared
 
         self.isEnhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
         self.useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
@@ -140,12 +140,15 @@ class AIEnhancementService: ObservableObject {
     }
 
     private func getSystemMessage(for mode: EnhancementPrompt) async -> String {
-        let selectedText = await SelectedTextService.fetchSelectedText()
-
-        let selectedTextContext = if let selectedText = selectedText, !selectedText.isEmpty {
-            "\n\n<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
+        let selectedTextContext: String
+        if AXIsProcessTrusted() {
+            if let selectedText = await SelectedTextService.fetchSelectedText(), !selectedText.isEmpty {
+                selectedTextContext = "\n\n<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
+            } else {
+                selectedTextContext = ""
+            }
         } else {
-            ""
+            selectedTextContext = ""
         }
 
         let clipboardContext = if useClipboardContext,
@@ -164,17 +167,17 @@ class AIEnhancementService: ObservableObject {
             ""
         }
 
-        let dictionaryContext = dictionaryContextService.getDictionaryContext()
+        let customVocabulary = customVocabularyService.getCustomVocabulary()
 
         let allContextSections = selectedTextContext + clipboardContext + screenCaptureContext
 
-        let dictionaryContextSection = if !dictionaryContext.isEmpty {
-            "\n\n<DICTIONARY_CONTEXT>\(dictionaryContext)\n</DICTIONARY_CONTEXT>"
+        let customVocabularySection = if !customVocabulary.isEmpty {
+            "\n\n<CUSTOM_VOCABULARY>\(customVocabulary)\n</CUSTOM_VOCABULARY>"
         } else {
             ""
         }
 
-        let finalContextSection = allContextSections + dictionaryContextSection
+        let finalContextSection = allContextSections + customVocabularySection
 
         if let activePrompt = activePrompt {
             if activePrompt.id == PredefinedPrompts.assistantPromptId {
