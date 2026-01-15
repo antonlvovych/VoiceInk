@@ -167,7 +167,7 @@ class AIEnhancementService: ObservableObject {
             ""
         }
 
-        let customVocabulary = customVocabularyService.getCustomVocabulary()
+        let customVocabulary = customVocabularyService.getCustomVocabulary(from: modelContext)
 
         let allContextSections = selectedTextContext + clipboardContext + screenCaptureContext
 
@@ -208,10 +208,6 @@ class AIEnhancementService: ObservableObject {
             self.lastSystemMessageSent = systemMessage
             self.lastUserMessageSent = formattedText
         }
-
-        // Log the message being sent to AI enhancement
-        logger.notice("AI Enhancement - System Message: \(systemMessage, privacy: .public)")
-        logger.notice("AI Enhancement - User Message: \(formattedText, privacy: .public)")
 
         if aiService.selectedProvider == .ollama {
             do {

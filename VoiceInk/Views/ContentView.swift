@@ -106,22 +106,25 @@ struct ContentView: View {
 
                 ForEach(visibleViewTypes) { viewType in
                     Section {
-                        NavigationLink(value: viewType) {
-                            HStack(spacing: 12) {
-                                Image(systemName: viewType.icon)
-                                    .font(.system(size: 18, weight: .medium))
-                                    .frame(width: 24, height: 24)
-
-                                Text(viewType.rawValue)
-                                    .font(.system(size: 14, weight: .medium))
-
-                                Spacer()
+                        if viewType == .history {
+                            Button(action: {
+                                HistoryWindowController.shared.showHistoryWindow(
+                                    modelContainer: modelContext.container,
+                                    whisperState: whisperState
+                                )
+                            }) {
+                                SidebarItemView(viewType: viewType)
                             }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 2)
+                            .buttonStyle(.plain)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                            .listRowSeparator(.hidden)
+                        } else {
+                            NavigationLink(value: viewType) {
+                                SidebarItemView(viewType: viewType)
+                            }
+                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                            .listRowSeparator(.hidden)
                         }
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                        .listRowSeparator(.hidden)
                     }
                 }
             }
@@ -139,7 +142,8 @@ struct ContentView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
-        .frame(minWidth: 940, minHeight: 730)
+        .frame(width: 950)
+        .frame(minHeight: 730)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToDestination)) { notification in
             if let destination = notification.userInfo?["destination"] as? String {
                 switch destination {
@@ -150,7 +154,10 @@ struct ContentView: View {
                 case "VoiceInk Pro":
                     selectedView = .license
                 case "History":
-                    selectedView = .history
+                    HistoryWindowController.shared.showHistoryWindow(
+                        modelContainer: modelContext.container,
+                        whisperState: whisperState
+                    )
                 case "Permissions":
                     selectedView = .permissions
                 case "Enhancement":
@@ -178,7 +185,8 @@ struct ContentView: View {
         case .transcribeAudio:
             AudioTranscribeView()
         case .history:
-            TranscriptionHistoryView()
+            Text("History")
+                .foregroundColor(.secondary)
         case .audioInput:
             AudioInputSettingsView()
         case .dictionary:
@@ -196,4 +204,22 @@ struct ContentView: View {
     }
 }
 
- 
+private struct SidebarItemView: View {
+    let viewType: ViewType
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: viewType.icon)
+                .font(.system(size: 18, weight: .medium))
+                .frame(width: 24, height: 24)
+
+            Text(viewType.rawValue)
+                .font(.system(size: 14, weight: .medium))
+
+            Spacer()
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 2)
+    }
+}
+

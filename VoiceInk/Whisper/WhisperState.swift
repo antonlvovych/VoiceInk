@@ -138,7 +138,7 @@ class WhisperState: NSObject, ObservableObject {
         }
     }
     
-    func toggleRecord() async {
+    func toggleRecord(powerModeId: UUID? = nil) async {
         if recordingState == .recording {
             await recorder.stopRecording()
             if let recordedFile {
@@ -195,7 +195,10 @@ class WhisperState: NSObject, ObservableObject {
                                 self.recordingState = .recording
                             }
 
-                            await ActiveWindowService.shared.applyConfigurationForCurrentApp()
+                            // Detect and apply Power Mode for current app/website in background
+                            Task {
+                                await ActiveWindowService.shared.applyConfiguration(powerModeId: powerModeId)
+                            }
 
                             // Load model and capture context in background without blocking
                             Task.detached { [weak self] in
@@ -316,7 +319,7 @@ class WhisperState: NSObject, ObservableObject {
                 logger.notice("📝 Formatted transcript: \(text, privacy: .public)")
             }
 
-            text = WordReplacementService.shared.applyReplacements(to: text)
+            text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             logger.notice("📝 WordReplacement: \(text, privacy: .public)")
 
             let audioAsset = AVURLAsset(url: url)

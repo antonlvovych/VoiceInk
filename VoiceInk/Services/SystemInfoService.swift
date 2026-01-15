@@ -101,11 +101,11 @@ class SystemInfoService {
 
     private func getCurrentAudioDevice() -> String {
         let audioManager = AudioDeviceManager.shared
-        if let deviceID = audioManager.selectedDeviceID ?? audioManager.fallbackDeviceID,
-           let deviceName = audioManager.getDeviceName(deviceID: deviceID) {
+        let deviceID = audioManager.getCurrentDevice()
+        if deviceID != 0, let deviceName = audioManager.getDeviceName(deviceID: deviceID) {
             return deviceName
         }
-        return "System Default"
+        return "Unknown"
     }
 
     private func getAvailableAudioDevices() -> String {
@@ -188,11 +188,11 @@ class SystemInfoService {
     }
 
     private func getLicenseStatus() -> String {
-        let userDefaults = UserDefaults.standard
+        let licenseManager = LicenseManager.shared
 
         // Check for existing license key and activation
-        if let _ = userDefaults.licenseKey {
-            if userDefaults.activationId != nil || !userDefaults.bool(forKey: "VoiceInkLicenseRequiresActivation") {
+        if licenseManager.licenseKey != nil {
+            if licenseManager.activationId != nil || !UserDefaults.standard.bool(forKey: "VoiceInkLicenseRequiresActivation") {
                 return "Licensed (Pro)"
             }
         }

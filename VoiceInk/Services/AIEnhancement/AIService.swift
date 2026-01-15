@@ -2,7 +2,7 @@ import Foundation
 
 enum AIProvider: String, CaseIterable {
     case cerebras = "Cerebras"
-    case groq = "GROQ"
+    case groq = "Groq"
     case gemini = "Gemini"
     case anthropic = "Anthropic"
     case openAI = "OpenAI"
@@ -55,7 +55,7 @@ enum AIProvider: String, CaseIterable {
         case .anthropic:
             return "claude-sonnet-4-5"
         case .openAI:
-            return "gpt-5.1"
+            return "gpt-5.2"
         case .mistral:
             return "mistral-large-latest"
         case .elevenLabs:
@@ -82,7 +82,9 @@ enum AIProvider: String, CaseIterable {
                 "llama-4-scout-17b-16e-instruct",
                 "llama-3.3-70b",
                 "qwen-3-32b",
-                "qwen-3-235b-a22b-instruct-2507"
+                "qwen-3-235b-a22b-instruct-2507",
+                "zai-glm-4.6",
+                "zai-glm-4.7"
             ]
         case .groq:
             return [
@@ -96,6 +98,7 @@ enum AIProvider: String, CaseIterable {
             ]
         case .gemini:
             return [
+                "gemini-3-flash-preview",
                 "gemini-3-pro-preview",
                 "gemini-2.5-pro",
                 "gemini-2.5-flash",
@@ -110,6 +113,7 @@ enum AIProvider: String, CaseIterable {
             ]
         case .openAI:
             return [
+                "gpt-5.2",
                 "gpt-5.1",
                 "gpt-5-mini",
                 "gpt-5-nano",
@@ -165,7 +169,7 @@ class AIService: ObservableObject {
         didSet {
             userDefaults.set(selectedProvider.rawValue, forKey: "selectedAIProvider")
             if selectedProvider.requiresAPIKey {
-                if let savedKey = userDefaults.string(forKey: "\(selectedProvider.rawValue)APIKey") {
+                if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: selectedProvider.rawValue) {
                     self.apiKey = savedKey
                     self.isAPIKeyValid = true
                 } else {
@@ -197,7 +201,7 @@ class AIService: ObservableObject {
             if provider == .ollama {
                 return ollamaService.isConnected
             } else if provider.requiresAPIKey {
-                return userDefaults.string(forKey: "\(provider.rawValue)APIKey") != nil
+                return APIKeyManager.shared.hasAPIKey(forProvider: provider.rawValue)
             }
             return false
         }
@@ -222,22 +226,27 @@ class AIService: ObservableObject {
     }
     
     init() {
+        // Migrate legacy "GROQ" raw value to "Groq"
+        if userDefaults.string(forKey: "selectedAIProvider") == "GROQ" {
+            userDefaults.set("Groq", forKey: "selectedAIProvider")
+        }
+
         if let savedProvider = userDefaults.string(forKey: "selectedAIProvider"),
            let provider = AIProvider(rawValue: savedProvider) {
             self.selectedProvider = provider
         } else {
             self.selectedProvider = .gemini
         }
-        
+
         if selectedProvider.requiresAPIKey {
-            if let savedKey = userDefaults.string(forKey: "\(selectedProvider.rawValue)APIKey") {
+            if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: selectedProvider.rawValue) {
                 self.apiKey = savedKey
                 self.isAPIKeyValid = true
             }
         } else {
             self.isAPIKeyValid = true
         }
-        
+
         loadSavedModelSelections()
         loadSavedOpenRouterModels()
     }
@@ -281,14 +290,14 @@ class AIService: ObservableObject {
             completion(true, nil)
             return
         }
-        
+
         verifyAPIKey(key) { [weak self] isValid, errorMessage in
             guard let self = self else { return }
             DispatchQueue.main.async {
                 if isValid {
                     self.apiKey = key
                     self.isAPIKeyValid = true
-                    self.userDefaults.set(key, forKey: "\(self.selectedProvider.rawValue)APIKey")
+                    APIKeyManager.shared.saveAPIKey(key, forProvider: self.selectedProvider.rawValue)
                     NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
                 } else {
                     self.isAPIKeyValid = false
@@ -513,10 +522,10 @@ class AIService: ObservableObject {
     
     func clearAPIKey() {
         guard selectedProvider.requiresAPIKey else { return }
-        
+
         apiKey = ""
         isAPIKeyValid = false
-        userDefaults.removeObject(forKey: "\(selectedProvider.rawValue)APIKey")
+        APIKeyManager.shared.deleteAPIKey(forProvider: selectedProvider.rawValue)
         NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
     }
     
