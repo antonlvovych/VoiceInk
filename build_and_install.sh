@@ -14,8 +14,15 @@ xcodebuild -project VoiceInk.xcodeproj \
     -scheme VoiceInk \
     -configuration Release \
     -derivedDataPath ./build \
+    -xcconfig LocalBuild.xcconfig \
+    CODE_SIGN_IDENTITY="-" \
+    CODE_SIGNING_REQUIRED=NO \
+    CODE_SIGNING_ALLOWED=YES \
+    DEVELOPMENT_TEAM="" \
+    CODE_SIGN_ENTITLEMENTS="$(pwd)/VoiceInk/VoiceInk.local.entitlements" \
     -skipPackagePluginValidation \
     -skipMacroValidation \
+    -allowProvisioningUpdates \
     clean build 2>&1 | grep -E "^\*\*|error:|warning:" || true
 
 # Verify build succeeded
